@@ -1,0 +1,16 @@
+name: Mersenne Prime Search
+on:
+  workflow_dispatch:
+    inputs:
+      search_range:
+        description: 'Range of n (e.g., 10000,15000)'
+        required: true
+        default: '10000,10050'
+jobs:
+  search_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run Search
+        env:
+          RANGE: ${{ github.event.inputs.search_range }}
+        run: ruby -e "require 'prime';s,e=ENV['RANGE'].split(',').map(&:to_i);(s..e).each{|n|next unless n.prime?;if n==2;puts \"M2 is prime\";next;end;l=4;m=(1<<n)-1;(n-2).times{l=(l*l-2)%m};puts \"M#{n} is prime\" if l==0}"
