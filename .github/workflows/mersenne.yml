@@ -1,44 +1,53 @@
-name: Ramsey Search Multi Hash Concat Seeded
+name: Ramsey Local Search N43
 on: [workflow_dispatch]
 jobs:
   run-python:
     runs-on: ubuntu-latest
     steps:
-      - name: Run Seeded Hash Search Algorithm
+      - name: Run Hill Climbing Algorithm
         run: |
           python -c '
-          import hashlib,itertools,zlib
-          funcs=[
-           ("sha256",lambda v:int(hashlib.sha256(v).hexdigest()[-1],16)),
-           ("md5",lambda v:int(hashlib.md5(v).hexdigest()[-1],16)),
-           ("sha1",lambda v:int(hashlib.sha1(v).hexdigest()[-1],16)),
-           ("sha512",lambda v:int(hashlib.sha512(v).hexdigest()[-1],16)),
-           ("blake2s",lambda v:int(hashlib.blake2s(v).hexdigest()[-1],16)),
-           ("sha224",lambda v:int(hashlib.sha224(v).hexdigest()[-1],16)),
-           ("crc32",lambda v:zlib.crc32(v)%16),
-           ("adler32",lambda v:zlib.adler32(v)%16)
-          ]
-          masks=[sum(1<<i for i in p) for p in itertools.combinations(range(16),8)]
-          for N in range(43,49):
-           print("=== N = "+str(N)+" ===")
-           for n,F in funcs:
-            for seed in range(10):
-             print("Testing: "+n+" Seed: "+str(seed))
-             h={}
-             for x,y in itertools.combinations(range(1,N+1),2):
-              h[(x,y)]=F((str(seed)+"_"+str(x)+"_"+str(y)).encode())
-             s=set()
-             for c in itertools.combinations(range(1,N+1),5):
-              m=0
-              for i in range(5):
-               for j in range(i+1,5):
-                m|=1<<h[(c[i],c[j])]
-              s.add(m)
-             f=0
-             for a in masks:
-              b=(~a)&65535
-              if not any((x&~a)==0 or (x&~b)==0 for x in s):
-               print("Success! N: "+str(N)+" A:",[i for i in range(16) if a&(1<<i)],"B:",[i for i in range(16) if b&(1<<i)])
-               f=1
-             if not f:print("Failed.")
+          import random,itertools
+          N=43
+          print("=== Target N =",N,"===")
+          E=list(itertools.combinations(range(1,N+1),2))
+          C=list(itertools.combinations(range(1,N+1),5))
+          print("Graph generated. Pre-calculating memory map...")
+          Ce=[list(itertools.combinations(c,2)) for c in C]
+          Ec={e:[] for e in E}
+          for i,ce in enumerate(Ce):
+           for e in ce:Ec[e].append(i)
+          print("Memory map loaded. Starting local search...")
+          def solve():
+           for attempt in range(10):
+            random.seed(attempt)
+            col={e:random.choice([0,1]) for e in E}
+            score=0
+            for ce in Ce:
+             s=col[ce[0]]+col[ce[1]]+col[ce[2]]+col[ce[3]]+col[ce[4]]+col[ce[5]]+col[ce[6]]+col[ce[7]]+col[ce[8]]+col[ce[9]]
+             if s==0 or s==10:score+=1
+            print("Attempt",attempt+1,"Init Error Score:",score)
+            for step in range(100000):
+             if score==0:
+              print("Success! N: 43")
+              print("A:",[e for e in E if col[e]==0])
+              print("B:",[e for e in E if col[e]==1])
+              return
+             e=random.choice(E)
+             new_c=1-col[e]
+             d=0
+             for i in Ec[e]:
+              ce=Ce[i]
+              s=col[ce[0]]+col[ce[1]]+col[ce[2]]+col[ce[3]]+col[ce[4]]+col[ce[5]]+col[ce[6]]+col[ce[7]]+col[ce[8]]+col[ce[9]]
+              if s==0 or s==10:d-=1
+              ns=s+1 if new_c==1 else s-1
+              if ns==0 or ns==10:d+=1
+             if d<=0 or random.random()<0.001:
+              col[e]=new_c
+              score+=d
+             if step%25000==0 and step>0:
+              print("  Step",step,"Current Score:",score)
+            print(" Attempt End Score:",score)
+           print("Failed to reach 0 in all attempts.")
+          solve()
           '
