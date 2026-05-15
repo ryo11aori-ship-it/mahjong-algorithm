@@ -1,53 +1,48 @@
-name: Ramsey Local Search N43
+name: Ramsey Local Search N43 Fast
 on: [workflow_dispatch]
 jobs:
   run-python:
     runs-on: ubuntu-latest
     steps:
-      - name: Run Hill Climbing Algorithm
+      - name: Run Fast Hill Climbing Algorithm
         run: |
           python -c '
           import random,itertools
-          N=43
-          print("=== Target N =",N,"===")
-          E=list(itertools.combinations(range(1,N+1),2))
-          C=list(itertools.combinations(range(1,N+1),5))
-          print("Graph generated. Pre-calculating memory map...")
-          Ce=[list(itertools.combinations(c,2)) for c in C]
-          Ec={e:[] for e in E}
+          E=list(itertools.combinations(range(1,44),2))
+          Ei={e:i for i,e in enumerate(E)}
+          C=list(itertools.combinations(range(1,44),5))
+          Ce=[[Ei[e] for e in itertools.combinations(c,2)] for c in C]
+          Ea=[[] for _ in range(903)]
           for i,ce in enumerate(Ce):
-           for e in ce:Ec[e].append(i)
-          print("Memory map loaded. Starting local search...")
+           for e in ce:Ea[e].append(i)
           def solve():
            for attempt in range(10):
             random.seed(attempt)
-            col={e:random.choice([0,1]) for e in E}
-            score=0
-            for ce in Ce:
-             s=col[ce[0]]+col[ce[1]]+col[ce[2]]+col[ce[3]]+col[ce[4]]+col[ce[5]]+col[ce[6]]+col[ce[7]]+col[ce[8]]+col[ce[9]]
-             if s==0 or s==10:score+=1
+            col=bytearray([random.choice([0,1]) for _ in range(903)])
+            cnt=bytearray(962598)
+            for i,ce in enumerate(Ce):cnt[i]=sum(col[e] for e in ce)
+            score=sum(1 for x in cnt if x==0 or x==10)
             print("Attempt",attempt+1,"Init Error Score:",score)
             for step in range(100000):
-             if score==0:
-              print("Success! N: 43")
-              print("A:",[e for e in E if col[e]==0])
-              print("B:",[e for e in E if col[e]==1])
-              return
-             e=random.choice(E)
-             new_c=1-col[e]
-             d=0
-             for i in Ec[e]:
-              ce=Ce[i]
-              s=col[ce[0]]+col[ce[1]]+col[ce[2]]+col[ce[3]]+col[ce[4]]+col[ce[5]]+col[ce[6]]+col[ce[7]]+col[ce[8]]+col[ce[9]]
-              if s==0 or s==10:d-=1
-              ns=s+1 if new_c==1 else s-1
-              if ns==0 or ns==10:d+=1
+             if score==0:print("Success!");return
+             e=random.randrange(903);c=col[e];d=0
+             if c==0:
+              for i in Ea[e]:
+               v=cnt[i]
+               if v==0:d-=1
+               elif v==9:d+=1
+             else:
+              for i in Ea[e]:
+               v=cnt[i]
+               if v==10:d-=1
+               elif v==1:d+=1
              if d<=0 or random.random()<0.001:
-              col[e]=new_c
-              score+=d
-             if step%25000==0 and step>0:
-              print("  Step",step,"Current Score:",score)
+              col[e]=1-c;score+=d
+              if c==0:
+               for i in Ea[e]:cnt[i]+=1
+              else:
+               for i in Ea[e]:cnt[i]-=1
+             if step%25000==0 and step>0:print("  Step",step,"Score:",score)
             print(" Attempt End Score:",score)
-           print("Failed to reach 0 in all attempts.")
           solve()
           '
